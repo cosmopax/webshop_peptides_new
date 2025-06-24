@@ -71,12 +71,12 @@ fi
 
 print_header "PART 3: CLEANING & CREATING SITE STRUCTURE"
 # This section now deletes old content to ensure a clean run
-echo "Deleting old menus, pages, and categories..."
+echo "Deleting old menus, pages, and categories for a clean start..."
 sudo -u www-data wp menu delete main-navigation --yes --path="$WP_PATH" 2>/dev/null || true
 sudo -u www-data wp post delete $(sudo -u www-data wp post list --post_type=page --post_status=publish --format=ids --path="$WP_PATH") --force --path="$WP_PATH" 2>/dev/null || true
 ALL_TERMS=$(sudo -u www-data wp term list product_cat --field=term_id --format=ids --path="$WP_PATH")
-if [ -n "$ALL_TERMS" ]; then sudo -u www-data wp term delete product_cat $ALL_TERMS --path="$WP_PATH"; fi
-# Now create the new structure
+if [ -n "$ALL_TERMS" ]; then sudo -u www-data wp term delete product_cat $ALL_TERMS --yes --path="$WP_PATH"; fi
+# Now create the new structure using an embedded Python script
 cat << 'EOF_PYTHON' > "$PYTHON_SCRIPT_PATH"
 import requests,bs4,re
 PAGES=["shipping","terms-and-conditions","privacy-policy","contact-us","affiliate-program","cookies","about-us","peptide-calculator","blog","wholesale","returns"]
@@ -94,7 +94,7 @@ try:
         print(f'wp post create --post_type=page --post_title="{pt}" --post_status=publish --path="$WP_PATH" > /dev/null')
     print("m='main-navigation';wp menu create 'Main Navigation' --path=\"$WP_PATH\";wp menu location assign \"$m\" primary --path=\"$WP_PATH\"")
     print("h=$(wp post list --post_type=page --name=home --field=ID --path=\"$WP_PATH\"||wp post create --post_type=page --post_title=Home --post_status=publish --porcelain --path=\"$WP_PATH\");wp option update show_on_front page --path=\"$WP_PATH\"&&wp option update page_on_front \"$h\" --path=\"$WP_PATH\"")
-except Exception as e:print(f"echo 'PYTHON ERROR: {e}'")
+except Exception as e:print(f"echo '# PYTHON ERROR: {e}'")
 EOF_PYTHON
 python3 "$PYTHON_SCRIPT_PATH" > "$STRUCTURE_SCRIPT_PATH"
 sudo -u www-data bash "$STRUCTURE_SCRIPT_PATH"
